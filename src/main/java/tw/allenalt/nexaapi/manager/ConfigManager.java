@@ -5,6 +5,7 @@ import org.bukkit.configuration.file.YamlConfiguration;
 import org.bukkit.plugin.Plugin;
 
 import java.io.File;
+import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.InputStreamReader;
@@ -12,10 +13,6 @@ import java.nio.charset.StandardCharsets;
 import java.util.HashMap;
 import java.util.Map;
 
-/**
- * Manages configuration files. Automatically saves defaults from the plugin
- * JAR on first access, and provides typed getters / setters.
- */
 public final class ConfigManager implements Manager {
 
     private final Plugin plugin;
@@ -55,7 +52,6 @@ public final class ConfigManager implements Manager {
         this.main = plugin.getConfig();
     }
 
-    /** @return the primary config.yml. */
     public FileConfiguration getMain() {
         return main;
     }
@@ -64,7 +60,6 @@ public final class ConfigManager implements Manager {
         if ("config".equals(name)) return main;
         FileConfiguration cfg = configs.get(name);
         if (cfg == null) {
-            // Lazy creation
             File file = new File(plugin.getDataFolder(), name + ".yml");
             if (!file.exists()) {
                 try {
@@ -75,13 +70,17 @@ public final class ConfigManager implements Manager {
                 }
             }
             cfg = YamlConfiguration.loadConfiguration(file);
-            // Load defaults from jar
             InputStream in = plugin.getResource(name + ".yml");
             if (in != null) {
-                cfg.setDefaults(YamlConfiguration.loadConfiguration(
-                        new InputStreamReader(in, StandardCharsets.UTF_8)));
-                cfg.options().copyDefaults(true);
-                try { cfg.save(file); } catch (IOException ignored) {}
+                try (InputStreamReader reader = new InputStreamReader(in, StandardCharsets.UTF_8)) {
+                    cfg.setDefaults(YamlConfiguration.loadConfiguration(reader));
+                    cfg.options().copyDefaults(true);
+                    try { cfg.save(file); } catch (IOException ignored) {}
+                } catch (FileNotFoundException e) {
+                    plugin.getLogger().warning("Could not read default " + name + ".yml from jar.");
+                } catch (IOException e) {
+                    plugin.getLogger().warning("Could not read default " + name + ".yml: " + e.getMessage());
+                }
             }
             registerConfig(name, file, cfg);
         }
@@ -93,9 +92,6 @@ public final class ConfigManager implements Manager {
         files.put(name, file);
     }
 
-    /**
-     * Saves a named config to disk.
-     */
     public void save(String name) {
         FileConfiguration cfg = configs.get(name);
         File file = files.get(name);
@@ -110,8 +106,6 @@ public final class ConfigManager implements Manager {
     public void saveAll() {
         for (String name : configs.keySet()) save(name);
     }
-
-    // -- Typed accessors for main config ---------------------------------
 
     public String getString(String path, String def) {
         return main.getString(path, def);
