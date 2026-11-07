@@ -1,19 +1,16 @@
 package tw.allent.nexaapi.command;
 
 import org.bukkit.Bukkit;
-import org.bukkit.command.Command;
 import org.bukkit.command.CommandMap;
 import org.bukkit.command.PluginCommand;
-import org.bukkit.command.SimpleCommandMap;
 import org.bukkit.plugin.Plugin;
+import org.bukkit.plugin.java.JavaPlugin;
 import tw.allent.nexaapi.manager.Manager;
 
 import java.lang.reflect.Field;
-import java.util.Map;
 
 /**
- * Registers {@link NexaCommand} instances dynamically without needing
- * plugin.yml entries for every command.
+ * Registers {@link NexaCommand} instances dynamically.
  */
 public final class CommandRegistry implements Manager {
 
@@ -39,9 +36,6 @@ public final class CommandRegistry implements Manager {
     @Override
     public void shutdown() {}
 
-    /**
-     * Registers a command. Tries CommandMap first, then plugin.yml fallback.
-     */
     public void register(NexaCommand cmd) {
         if (commandMap != null) {
             org.bukkit.command.Command bukkit = new org.bukkit.command.Command(
@@ -64,8 +58,8 @@ public final class CommandRegistry implements Manager {
             };
             commandMap.register(plugin.getName().toLowerCase(), bukkit);
             plugin.getLogger().info("Registered command: /" + cmd.getName());
-        } else {
-            PluginCommand pc = plugin.getCommand(cmd.getName());
+        } else if (plugin instanceof JavaPlugin javaPlugin) {
+            PluginCommand pc = javaPlugin.getCommand(cmd.getName());
             if (pc != null) {
                 pc.setExecutor(cmd);
                 pc.setTabCompleter(cmd);
