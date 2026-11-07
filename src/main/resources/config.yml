@@ -1,0 +1,25 @@
+# NexaAPI Main Configuration
+settings:
+  debug: false
+  check-updates: true
+  locale: en
+
+storage:
+  # Available: YAML, SQLITE, MYSQL
+  type: YAML
+  # Used only when type is SQLITE
+  sqlite-file: nexa.db
+  mysql:
+    host: localhost
+    port: 3306
+    database: nexa
+    username: root
+    password: ""
+    useSSL: false
+
+messages:
+  prefix: "&8[&bNexa&8] &r"
+  no-permission: "&cYou do not have permission to do that."
+  player-only: "&cThat command can only be run by players."
+  unknown-command: "&cUnknown command."
+  reload-success: "&aConfiguration reloaded successfully."
