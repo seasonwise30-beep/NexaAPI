@@ -1,0 +1,8 @@
+name: NexaAPI
+version: 1.0.0
+main: tw.allent.nexaapi.NexaAPI
+api-version: '1.20'
+author: Allent_tw
+description: Foundation API for NexaCore
+softdepend:
+  - PlaceholderAPI
