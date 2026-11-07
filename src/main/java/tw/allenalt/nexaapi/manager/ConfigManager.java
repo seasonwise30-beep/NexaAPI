@@ -13,6 +13,10 @@ import java.nio.charset.StandardCharsets;
 import java.util.HashMap;
 import java.util.Map;
 
+/**
+ * Manages configuration files. Automatically saves defaults from the plugin
+ * JAR on first access, and provides typed getters / setters.
+ */
 public final class ConfigManager implements Manager {
 
     private final Plugin plugin;
@@ -56,34 +60,49 @@ public final class ConfigManager implements Manager {
         return main;
     }
 
+    /**
+     * Returns (and lazily loads) a named configuration.
+     * If the file does not exist yet, it is created and populated with
+     * defaults from the plugin JAR ({@code <name>.yml}).
+     */
     public FileConfiguration get(String name) {
         if ("config".equals(name)) return main;
+
         FileConfiguration cfg = configs.get(name);
-        if (cfg == null) {
-            File file = new File(plugin.getDataFolder(), name + ".yml");
-            if (!file.exists()) {
-                try {
-                    if (!file.getParentFile().exists()) file.getParentFile().mkdirs();
-                    file.createNewFile();
-                } catch (IOException ex) {
-                    plugin.getLogger().warning("Could not create " + name + ".yml");
-                }
+        if (cfg != null) return cfg;
+
+        File file = new File(plugin.getDataFolder(), name + ".yml");
+        if (!file.exists()) {
+            try {
+                File parent = file.getParentFile();
+                if (parent != null && !parent.exists()) parent.mkdirs();
+                file.createNewFile();
+            } catch (IOException ex) {
+                plugin.getLogger().warning("Could not create " + name + ".yml: " + ex.getMessage());
             }
-            cfg = YamlConfiguration.loadConfiguration(file);
-            InputStream in = plugin.getResource(name + ".yml");
-            if (in != null) {
-                try (InputStreamReader reader = new InputStreamReader(in, StandardCharsets.UTF_8)) {
-                    cfg.setDefaults(YamlConfiguration.loadConfiguration(reader));
-                    cfg.options().copyDefaults(true);
-                    try { cfg.save(file); } catch (IOException ignored) {}
-                } catch (FileNotFoundException e) {
-                    plugin.getLogger().warning("Could not read default " + name + ".yml from jar.");
-                } catch (IOException e) {
-                    plugin.getLogger().warning("Could not read default " + name + ".yml: " + e.getMessage());
-                }
-            }
-            registerConfig(name, file, cfg);
         }
+
+        cfg = YamlConfiguration.loadConfiguration(file);
+
+        // Load defaults from inside the JAR, fully guarded.
+        InputStream in = plugin.getResource(name + ".yml");
+        if (in != null) {
+            try (InputStreamReader reader = new InputStreamReader(in, StandardCharsets.UTF_8)) {
+                cfg.setDefaults(YamlConfiguration.loadConfiguration(reader));
+                cfg.options().copyDefaults(true);
+                try {
+                    cfg.save(file);
+                } catch (IOException saveEx) {
+                    plugin.getLogger().warning("Failed to write default " + name + ".yml: " + saveEx.getMessage());
+                }
+            } catch (FileNotFoundException ex) {
+                plugin.getLogger().warning("Default " + name + ".yml not found in jar.");
+            } catch (IOException ex) {
+                plugin.getLogger().warning("Failed to read default " + name + ".yml: " + ex.getMessage());
+            }
+        }
+
+        registerConfig(name, file, cfg);
         return cfg;
     }
 
